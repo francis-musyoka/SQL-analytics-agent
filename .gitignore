@@ -1,5 +1,6 @@
 ## Claude
 docs
+knowledge/
 __pycache__/
 *.pyc
 .env
