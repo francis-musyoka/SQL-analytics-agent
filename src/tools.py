@@ -1,6 +1,6 @@
 """Tool definitions (for the model) and the dispatcher (for our code).
 
-TOOLS is the JSON Schema the model reads. dispatch() turns a tool name +
+TOOLS is the JSON Schema the model reads. dispatch_tool() turns a tool name +
 arguments into a real call against db.py and ALWAYS returns a string, because
 tool results are sent back to the model as message text.
 """
@@ -37,7 +37,7 @@ TOOLS = [
 ]
 
 
-def dispatch(name, arguments):
+def dispatch_tool(name, arguments):
     """Run the tool the model asked for. Returns a STRING in all cases."""
     if name == "get_schema":
         return db.get_schema()

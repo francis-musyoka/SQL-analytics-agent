@@ -31,7 +31,7 @@ def _get_client():
     return _client
 
 
-def complete(messages, tools):
+def call_model(messages, tools):
     """Send the conversation + tools to OpenAI; return one LLMMessage."""
     response = _get_client().chat.completions.create(
         model=MODEL,
