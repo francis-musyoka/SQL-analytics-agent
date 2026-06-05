@@ -56,24 +56,35 @@ def answer_question(question, call_model=call_model, max_steps=MAX_AGENT_STEPS):
         {"role": "user", "content": question},
     ]
     sql_used = []
+    last_result = None  # rows from the last SUCCESSFUL run_sql (the answer's data)
 
     for _ in range(max_steps):
         msg = call_model(messages, tools.TOOLS)
         messages.append(_assistant_dict(msg))
 
         if not msg.tool_calls:               # no tool requested => final answer
-            return {"answer": msg.content, "sql": sql_used}
+            return {"answer": msg.content, "sql": sql_used, "result": last_result}
 
         for tc in msg.tool_calls:            # run each requested tool
             args = json.loads(tc.arguments or "{}")
             if tc.name == "run_sql" and "query" in args:
                 sql_used.append(args["query"])
-            result = context.truncate_result(tools.dispatch_tool(tc.name, args))
+            raw = tools.dispatch_tool(tc.name, args)
+            # Capture the structured rows BEFORE truncation so callers (CLI, web,
+            # evals) can use what the agent saw instead of re-running the query.
+            # We keep the LAST SUCCESSFUL run_sql result, not the last attempt --
+            # the final attempt may be an errored or exploratory query.
+            if tc.name == "run_sql" and not raw.startswith("ERROR"):
+                try:
+                    last_result = json.loads(raw)  # {"columns": [...], "rows": [...]}
+                except ValueError:
+                    pass
             messages.append(
-                {"role": "tool", "tool_call_id": tc.id, "content": result}
+                {"role": "tool", "tool_call_id": tc.id, "content": context.truncate_result(raw)}
             )
 
     return {
         "answer": "Sorry, I couldn't reach an answer within the step limit.",
         "sql": sql_used,
+        "result": last_result,
     }

@@ -33,13 +33,15 @@ def _get_client():
 
 def call_model(messages, tools):
     """Send the conversation + tools to OpenAI; return one LLMMessage."""
-    response = _get_client().chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        tools=tools,
-        tool_choice="auto",
-        temperature=LLM_TEMPERATURE,
-    )
+    kwargs = {
+        "model": MODEL,
+        "messages": messages,
+        "tools": tools,
+        "tool_choice": "auto",
+    }
+    if LLM_TEMPERATURE is not None:  # some models reject an explicit temperature
+        kwargs["temperature"] = LLM_TEMPERATURE
+    response = _get_client().chat.completions.create(**kwargs)
     msg = response.choices[0].message
     tool_calls = [
         ToolCall(id=tc.id, name=tc.function.name, arguments=tc.function.arguments)

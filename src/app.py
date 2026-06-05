@@ -7,7 +7,6 @@ and cheap).
 """
 from flask import Flask, jsonify, render_template, request
 
-from src import db
 from src.agent import answer_question
 
 app = Flask(__name__)
@@ -20,27 +19,22 @@ def index():
 
 @app.post("/ask")
 def ask():
-    question = (request.get_json(silent=True) or {}).get("question", "").strip()
-    if not question:
+    body = request.get_json(silent=True)
+    question = body.get("question") if isinstance(body, dict) else None
+    if not isinstance(question, str) or not question.strip():
         return jsonify({"error": "Please enter a question."}), 400
 
-    result = answer_question(question)
+    result = answer_question(question.strip())
 
-    # Re-run the agent's final query so we can show the actual rows in a table.
-    columns, rows = [], []
-    if result["sql"]:
-        try:
-            table = db.run_sql(result["sql"][-1])
-            columns, rows = table["columns"], table["rows"]
-        except db.QueryError:
-            pass  # the agent's prose answer still stands; just no table
-
+    # The agent already fetched the rows for its final query and returned them,
+    # so we render those directly -- no need to re-run the SQL.
+    table = result.get("result") or {}
     return jsonify(
         {
             "answer": result["answer"],
             "sql": result["sql"],
-            "columns": columns,
-            "rows": rows,
+            "columns": table.get("columns", []),
+            "rows": table.get("rows", []),
         }
     )
 

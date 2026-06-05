@@ -29,6 +29,10 @@ def test_agent_runs_tool_then_answers():
     result = agent.answer_question("Is there any track?", call_model=make_fake(scripted))
     assert result["answer"] == "There is at least one track."
     assert result["sql"] == ["SELECT Name FROM Track LIMIT 1"]
+    # the agent returns the rows it actually fetched on its last successful query,
+    # so callers don't have to re-run the SQL to see the data
+    assert result["result"]["columns"] == ["Name"]
+    assert len(result["result"]["rows"]) == 1
 
 
 def test_agent_respects_step_cap():

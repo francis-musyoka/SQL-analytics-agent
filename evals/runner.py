@@ -15,25 +15,30 @@ def _normalize(value):
     return value
 
 
+def _rows_to_set(rows):
+    """A list of rows -> an order-insensitive set of normalized tuples."""
+    return {tuple(_normalize(v) for v in row) for row in rows}
+
+
 def _result_set(sql):
     """Run a query and return its rows as a set of tuples (order-insensitive)."""
-    res = db.run_sql(sql)
-    return {tuple(_normalize(v) for v in row) for row in res["rows"]}
+    return _rows_to_set(db.run_sql(sql)["rows"])
 
 
 def score_case(case, answer_fn=real_answer):
     gold = _result_set(case["gold_sql"])
     result = answer_fn(case["question"])
-    if not result["sql"]:
-        return {"question": case["question"], "passed": False, "reason": "no SQL produced",
-                "agent_sql": None, "predicted": None, "gold": sorted(map(repr, gold))}
-    agent_sql = result["sql"][-1]  # the agent's final query
-    try:
-        predicted = _result_set(agent_sql)
-    except db.QueryError as e:
-        return {"question": case["question"], "passed": False, "reason": str(e),
+    agent_sql = result["sql"][-1] if result.get("sql") else None
+
+    # Score the rows the agent actually fetched (returned by answer_question),
+    # NOT a re-run of its last SQL string -- the last attempt may be an errored
+    # or exploratory query, while the answer came from an earlier one.
+    agent_result = result.get("result")
+    if agent_result is None:
+        return {"question": case["question"], "passed": False, "reason": "no result produced",
                 "agent_sql": agent_sql, "predicted": None, "gold": sorted(map(repr, gold))}
-    # diagnostics (sorted reprs so mixed types print without sort errors)
+
+    predicted = _rows_to_set(agent_result["rows"])
     return {"question": case["question"], "passed": predicted == gold,
             "agent_sql": agent_sql,
             "predicted": sorted(map(repr, predicted)),
