@@ -26,7 +26,7 @@ def test_agent_runs_tool_then_answers():
         # turn 2: model gives a final answer (no tool calls)
         LLMMessage(content="There is at least one track."),
     ]
-    result = agent.answer("Is there any track?", call_model=make_fake(scripted))
+    result = agent.answer_question("Is there any track?", call_model=make_fake(scripted))
     assert result["answer"] == "There is at least one track."
     assert result["sql"] == ["SELECT Name FROM Track LIMIT 1"]
 
@@ -37,5 +37,5 @@ def test_agent_respects_step_cap():
         ToolCall(id="c", name="get_schema", arguments="{}")
     ])
     scripted = [always_tool] * 50
-    result = agent.answer("loop forever?", call_model=make_fake(scripted), max_steps=3)
+    result = agent.answer_question("loop forever?", call_model=make_fake(scripted), max_steps=3)
     assert "couldn't" in result["answer"].lower()

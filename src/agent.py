@@ -1,7 +1,7 @@
 """The agent loop: think -> act -> observe, repeated until the model answers
 or we hit the step cap.
 
-answer() takes an optional `call_model` so tests can inject a fake LLM.
+answer_question() takes an optional `call_model` so tests can inject a fake LLM.
 """
 import json
 
@@ -33,7 +33,7 @@ def _assistant_dict(msg):
     return d
 
 
-def answer(question, call_model=call_model, max_steps=MAX_AGENT_STEPS):
+def answer_question(question, call_model=call_model, max_steps=MAX_AGENT_STEPS):
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": question},
