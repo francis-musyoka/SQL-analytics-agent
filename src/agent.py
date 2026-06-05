@@ -15,6 +15,23 @@ To answer the user's question:
 2. Write ONE SELECT query and call run_sql.
 3. If run_sql returns a string starting with ERROR, read it, fix your query, and try again.
 4. Once you have the data, reply with a short, direct answer in plain English.
+
+When writing SQL:
+- SELECT only the column(s) the question asks for. Do not add extra columns such
+  as the value you ORDER BY. If asked for a name, return just the name -- not the
+  name and its count.
+- If the question states a rounding or a unit (e.g. "round to one decimal",
+  "in minutes", "in seconds"), apply it inside the query.
+- To count HOW MANY entities satisfy an aggregate condition (e.g. how many
+  albums have exactly one track), first compute the per-entity aggregate in a
+  subquery, then COUNT(*) the qualifying rows in the outer query. Do NOT put
+  COUNT(...) in a query that is grouped by the entity -- that returns one row
+  per entity, not a single total.
+- A "total" spend or revenue for some entity means SUM the relevant amounts
+  GROUPED BY that entity. Revenue tied to specific tracks is the sum of
+  (line unit price x quantity) on the matching invoice lines, not the whole
+  invoice total (an invoice total covers every track on that invoice).
+
 Never invent table or column names. Only use the provided tools."""
 
 
@@ -39,24 +56,35 @@ def answer_question(question, call_model=call_model, max_steps=MAX_AGENT_STEPS):
         {"role": "user", "content": question},
     ]
     sql_used = []
+    last_result = None  # rows from the last SUCCESSFUL run_sql (the answer's data)
 
     for _ in range(max_steps):
         msg = call_model(messages, tools.TOOLS)
         messages.append(_assistant_dict(msg))
 
         if not msg.tool_calls:               # no tool requested => final answer
-            return {"answer": msg.content, "sql": sql_used}
+            return {"answer": msg.content, "sql": sql_used, "result": last_result}
 
         for tc in msg.tool_calls:            # run each requested tool
             args = json.loads(tc.arguments or "{}")
             if tc.name == "run_sql" and "query" in args:
                 sql_used.append(args["query"])
-            result = context.truncate_result(tools.dispatch_tool(tc.name, args))
+            raw = tools.dispatch_tool(tc.name, args)
+            # Capture the structured rows BEFORE truncation so callers (CLI, web,
+            # evals) can use what the agent saw instead of re-running the query.
+            # We keep the LAST SUCCESSFUL run_sql result, not the last attempt --
+            # the final attempt may be an errored or exploratory query.
+            if tc.name == "run_sql" and not raw.startswith("ERROR"):
+                try:
+                    last_result = json.loads(raw)  # {"columns": [...], "rows": [...]}
+                except ValueError:
+                    pass
             messages.append(
-                {"role": "tool", "tool_call_id": tc.id, "content": result}
+                {"role": "tool", "tool_call_id": tc.id, "content": context.truncate_result(raw)}
             )
 
     return {
         "answer": "Sorry, I couldn't reach an answer within the step limit.",
         "sql": sql_used,
+        "result": last_result,
     }
