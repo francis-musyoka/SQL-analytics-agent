@@ -10,6 +10,9 @@ DB_PATH = BASE_DIR / "data" / "chinook.db"
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 MODEL = os.environ.get("MODEL", "gpt-4o-mini")
+# 0 = deterministic. We want consistent, reproducible SQL (and eval runs), not
+# creative sampling, so default to 0. Override via .env if you ever want variety.
+LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0"))
 
 MAX_RESULT_ROWS = 100
 MAX_AGENT_STEPS = 8

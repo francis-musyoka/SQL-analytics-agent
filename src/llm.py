@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from openai import OpenAI
 
-from src.config import MODEL, OPENAI_API_KEY
+from src.config import LLM_TEMPERATURE, MODEL, OPENAI_API_KEY
 
 
 @dataclass
@@ -38,6 +38,7 @@ def call_model(messages, tools):
         messages=messages,
         tools=tools,
         tool_choice="auto",
+        temperature=LLM_TEMPERATURE,
     )
     msg = response.choices[0].message
     tool_calls = [

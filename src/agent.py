@@ -15,6 +15,23 @@ To answer the user's question:
 2. Write ONE SELECT query and call run_sql.
 3. If run_sql returns a string starting with ERROR, read it, fix your query, and try again.
 4. Once you have the data, reply with a short, direct answer in plain English.
+
+When writing SQL:
+- SELECT only the column(s) the question asks for. Do not add extra columns such
+  as the value you ORDER BY. If asked for a name, return just the name -- not the
+  name and its count.
+- If the question states a rounding or a unit (e.g. "round to one decimal",
+  "in minutes", "in seconds"), apply it inside the query.
+- To count HOW MANY entities satisfy an aggregate condition (e.g. how many
+  albums have exactly one track), first compute the per-entity aggregate in a
+  subquery, then COUNT(*) the qualifying rows in the outer query. Do NOT put
+  COUNT(...) in a query that is grouped by the entity -- that returns one row
+  per entity, not a single total.
+- A "total" spend or revenue for some entity means SUM the relevant amounts
+  GROUPED BY that entity. Revenue tied to specific tracks is the sum of
+  (line unit price x quantity) on the matching invoice lines, not the whole
+  invoice total (an invoice total covers every track on that invoice).
+
 Never invent table or column names. Only use the provided tools."""
 
 
